@@ -1,0 +1,470 @@
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <iterator>
+#include <list>
+using namespace std;
+
+struct karta {
+        int liczba;
+        int kolor;
+        int wartosc;
+};
+
+struct gra {
+        int liczbaGraczy, liczbaUzytkownikow;
+        list<karta> zakryte, srodek;
+        list<karta> gracze[4];
+        int grozbaLiczbaKart = 0;
+        int grozbaLiczbaKolejek = 0;
+        int karnaLiczbaKolejek[4] = { 0,0,0,0 };
+        bool czyGraczWygral[4] = { 0, 0, 0, 0 };
+};
+
+karta zrobKarte(int wartosc) {
+        karta tmp;
+        tmp.liczba = wartosc % 13;
+        tmp.kolor = wartosc / 13;
+        tmp.wartosc = wartosc;
+        return tmp;
+}
+
+list<karta>* jakaLista(gra* gierka, int wybor) {
+        return &(gierka->gracze[wybor]);
+}
+
+void przeniesKarte(list<karta>* skad, list<karta>* dokad, karta co) {
+        dokad->push_front(co);
+        list<karta>::iterator it;
+        for (it = skad->begin(); it != skad->end(); ++it) {
+                if (it->wartosc == co.wartosc) {
+                        skad->erase(it);
+                        break;
+                }
+        }
+}
+
+void tasujKarty(gra* gierka, int ileKart) {
+        int T[52], i, i1, i2, x;
+        for (i = 0; i < ileKart; i++)
+                T[i] = i;
+        for (int i = 10 * ileKart; i > 0; i--)
+        {
+                i1 = rand() % ileKart;
+                i2 = rand() % ileKart;
+
+                x = T[i1];
+                T[i1] = T[i2];
+                T[i2] = x;
+        }
+        for (int i = 0; i < 52; i++) {
+                int wartosc = T[i];
+                karta tmp = zrobKarte(wartosc);
+                gierka->zakryte.push_front(tmp);
+        }
+}
+
+void dobieranieKart(gra* gierka, int iloscKart, int kto) {
+        for (int i = 0; i < iloscKart; i++) {
+                przeniesKarte(&gierka->zakryte, jakaLista(gierka, kto), gierka->zakryte.front());
+        }
+}
+
+void rozdajKarty(gra* gierka, int iloscKart) {
+        for (int y = 0; y < gierka->liczbaGraczy; y++) {
+                dobieranieKart(gierka, iloscKart, y);
+        }
+}
+
+void rozdajSrodek(gra* gierka, int ileKart) {
+        for (int j = 0; j < ileKart; j++) {
+                list<karta>::iterator it;
+                for (it = gierka->zakryte.begin(); it != gierka->zakryte.end(); it++) {
+                        karta tmp = *it;
+                        if (tmp.liczba != 0 && tmp.liczba != 1 && tmp.liczba != 2 && tmp.liczba != 11 && tmp.liczba != 12) {
+                                przeniesKarte(&gierka->zakryte, &gierka->srodek, tmp);
+                                break;
+                        }
+                }
+        }
+}
+
+void wczytajLiczbeGraczy(gra* gierka) {
+        cout << "Witaj w symulatorze Makao!" << endl;
+        cout << "Podaj liczbę graczy w calej grze (od 1 do 4)" << endl;
+        cin >> gierka->liczbaGraczy;
+        while (gierka->liczbaGraczy < 1 || gierka->liczbaGraczy>4) {
+                cout << "Niepoprawna ilosc graczy, wprowadz ponownie" << endl;
+                cin >> gierka->liczbaGraczy;
+        }
+}
+
+void wczytajLiczbeUzytkownikow(gra* gierka) {
+        cout << "Podaj liczbę graczy sterowanych przez Ciebie (od 1 do 4)" << endl;
+        cin >> gierka->liczbaUzytkownikow;
+        while (gierka->liczbaUzytkownikow > gierka->liczbaGraczy) {
+                cout << "Niepoprawna ilosc graczy, wprowadz ponownie" << endl;
+                cin >> gierka->liczbaUzytkownikow;
+        }
+}
+
+void wyswietlZakryte(gra* gierka) {
+        cout << "karty zakrytye" << endl;
+        for (karta tmp : gierka->zakryte)
+                cout << tmp.liczba + 2 << " " << tmp.kolor << " " << endl;
+        cout << endl;
+}
+
+void dokladanieNaStosKomp(gra* GRA, int kto, karta doPrzeniesia) {
+        przeniesKarte(jakaLista(GRA, kto), &GRA->srodek, doPrzeniesia);
+        cout << "Komputer nr " << kto + 1 << " wylozyl karte: " << doPrzeniesia.liczba + 2 << " " << doPrzeniesia.kolor << endl << endl;
+        if (doPrzeniesia.liczba == 0 || doPrzeniesia.liczba == 1)
+                GRA->grozbaLiczbaKart += (doPrzeniesia.liczba + 2);
+        else if (doPrzeniesia.liczba == 2)
+                GRA->grozbaLiczbaKolejek++;
+}
+
+void dokladanieNaStos(gra* gierka, int kto) {
+        karta wierzch = gierka->srodek.front();
+        int numer = 0;
+        list<karta>::iterator id = gierka->gracze[kto].begin();;
+        bool pierwszyRaz = true;
+        while (id->liczba != wierzch.liczba && id->kolor != wierzch.kolor || pierwszyRaz) {
+                if (pierwszyRaz)
+                        cout << "Podaj numer karty, ktora chcesz wylozyc:" << endl;
+                else
+                        cout << "Podaj poprawny numer karty, ktora chcesz wylozyc" << endl;
+                cin >> numer;
+                numer = numer - 1;
+                id = gierka->gracze[kto].begin();
+                while (numer--) {
+                        id++;
+                }
+                pierwszyRaz = false;
+        }
+        karta doPrzeniesienia = *id;
+        if (doPrzeniesienia.liczba == 0 || doPrzeniesienia.liczba == 1)
+                gierka->grozbaLiczbaKart += (doPrzeniesienia.liczba + 2);
+        else if (doPrzeniesienia.liczba == 2)
+                gierka->grozbaLiczbaKolejek++;
+        przeniesKarte(jakaLista(gierka, kto), &gierka->srodek, doPrzeniesienia);
+}
+
+void makao(gra* gierka, int numerGracza) {
+        int liczbaKart = gierka->gracze[numerGracza].size();
+        if (liczbaKart == 1) {
+                cout << "Gracz:" << numerGracza << "ma makao!" << endl;
+        }
+        else if (liczbaKart > 1) {
+                cout << "Nie masz makao" << endl;
+                //dobieranieKart(gierka, 5, numerGracza);
+        }
+}
+
+void pokazKarty(gra* gierka) {
+        for (int y = 0; y < gierka->liczbaGraczy; y++) {
+                cout << "karty gracza " << y + 1 << endl;
+                for (karta tmp : gierka->gracze[y])
+                        cout << tmp.liczba + 2 << " " << tmp.kolor << " " << endl;
+                cout << endl;
+        }
+}
+
+
+void sprawdzaczKart(gra* GRA, int kogo, karta kartaNaSrodku) {
+        karta wlasnieDobrana = GRA->gracze[kogo].front();
+        if (wlasnieDobrana.liczba == kartaNaSrodku.liczba || wlasnieDobrana.kolor == kartaNaSrodku.kolor) {
+                cout << "Mozesz dolozyc ta karte " << wlasnieDobrana.liczba + 2 << " " << wlasnieDobrana.kolor << endl << endl;
+                przeniesKarte(jakaLista(GRA, kogo), &GRA->srodek, wlasnieDobrana);
+        }
+}
+
+void zadanieKart(gra* GRA, int kogo, int coZadasz) {
+        karta tmp = GRA->srodek.front();
+        tmp.liczba = coZadasz;
+}
+
+void taryfiaktorKar(gra* GRA, int kogo, karta jakaKarta) {
+        if (jakaKarta.liczba == 0 || jakaKarta.liczba == 1) {
+                dobieranieKart(GRA, GRA->grozbaLiczbaKart, kogo);
+                cout << "gracz nr. " << kogo + 1 << " dobral " << GRA->grozbaLiczbaKart << " kart" << endl;
+                GRA->grozbaLiczbaKart = 0;
+        }
+        else if (jakaKarta.liczba == 2) {
+                GRA->karnaLiczbaKolejek[kogo] = GRA->grozbaLiczbaKolejek;
+                cout << "gracz nr. " << kogo + 1 << " pauzuje " << GRA->grozbaLiczbaKolejek << " kolejek" << endl;
+                GRA->grozbaLiczbaKolejek = 0;
+        }
+        else if (jakaKarta.liczba == 11 && jakaKarta.kolor == 0) {
+                dobieranieKart(GRA, GRA->grozbaLiczbaKart, kogo + 1);
+                cout << "gracz nr. " << kogo + 1 << " dobral " << GRA->grozbaLiczbaKart << " kart" << endl;
+                GRA->grozbaLiczbaKart = 0;
+        }
+        else if (jakaKarta.liczba == 11 && jakaKarta.kolor == 2) {
+                dobieranieKart(GRA, GRA->grozbaLiczbaKart, kogo - 1);
+                cout << "gracz nr. " << kogo + 1 << " dobral " << GRA->grozbaLiczbaKart << " kart" << endl;
+                GRA->grozbaLiczbaKart = 0;
+        }
+        else if (jakaKarta.liczba == 12)
+                cout << "gracz nr. " << kogo + 1 << " dobral " << 1 << " karte" << endl;
+        dobieranieKart(GRA, 1, kogo);
+}
+
+void sprawdzanie(gra* GRA, int kogo, karta jakaKarta) {
+        int licznik = 0;
+        list<karta>::iterator it, tmp;
+        for (it = GRA->gracze[kogo].begin(); it != GRA->gracze[kogo].end(); it++) {
+                if (it->liczba == jakaKarta.liczba) {
+                        cout << "Mozesz dolozyc rowniez ta karte " << licznik + 1 << endl;
+                        string nowaKomenda;
+                        cout << "Wpisz 'tak' jezeli chcesz dolozyc ta karte " << endl;
+                        cin >> nowaKomenda;
+                        if (nowaKomenda == "tak") {
+                                tmp = --it;
+                                it++;
+                                dokladanieNaStos(GRA, kogo);
+                                it = tmp;
+                        }
+                }
+                licznik++;
+        }
+}
+
+void poszukiwaczKart(gra* GRA, int kogo, karta jakaKarta) {
+        int licznik = 0;
+        list<karta>::iterator it, tmp;
+        bool mozna = false;
+        for (it = GRA->gracze[kogo].begin(); it != GRA->gracze[kogo].end(); it++) {
+                if (it->liczba == jakaKarta.liczba) {
+                        mozna = true;
+                        cout << "Mozesz odbic to karta " << licznik + 1 << endl;
+                        string nowaKomenda;
+                        cout << "Wpisz 'tak' jezeli chcesz dolozyc karte " << endl;
+                        cin >> nowaKomenda;
+                        if (nowaKomenda == "tak") {
+                                tmp = --it;
+                                it++;
+                                dokladanieNaStos(GRA, kogo);
+                                it = tmp;
+                        }
+                }
+                licznik++;
+        }
+        if (!mozna) {
+                cout << "Niestety nie mozesz nic zrobic" << endl;
+                taryfiaktorKar(GRA, kogo, jakaKarta);
+        }
+}
+
+void poszukiwaczKartKomp(gra* GRA, int kogo, karta jakaKarta) {
+        int licznik = 0;
+        list<karta>::iterator it;
+        bool mozna = false;
+        for (it = GRA->gracze[kogo].begin(); it != GRA->gracze[kogo].end(); ++it) {
+                if (it->liczba == jakaKarta.liczba) {
+                        mozna = true;
+                        karta doPrzeniesienia = *it;
+                        dokladanieNaStosKomp(GRA, kogo, doPrzeniesienia);
+                        break;
+                }
+                licznik++;
+        }
+        if (!mozna) {
+                cout << "Niestety komputer o nr. " << kogo + 1 << "nie moze nic zrobic, wiec dobiera karte" << endl;
+                taryfiaktorKar(GRA, kogo, jakaKarta);
+        }
+}
+
+
+void wypiszKarty(gra* GRA, int aktualnyGracz) {
+        cout << endl << "Karta nr. 11 - Jopek, 12 - Dama, 13 - Krol, 14 - As" << endl;
+        cout << "Kolor 0 - Pik, 1 - Karo, 2 - Kier, 3 - Trefl" << endl << endl;
+        cout << "Karta na srodku" << endl;;
+        karta tmp = GRA->srodek.front();
+        cout << tmp.liczba + 2 << " " << tmp.kolor << " " << endl << endl;
+
+        cout << "karty gracza " << aktualnyGracz + 1 << endl;
+        for (karta tmp : GRA->gracze[aktualnyGracz])
+                cout << tmp.liczba + 2 << " " << tmp.kolor << " " << endl;
+        cout << endl;
+}
+
+
+void menuWyboru(gra* GRA, bool* quit, int y) {
+        string ruch;
+        cout << "Wykonaj ruch (play/take/cheat/quit/makao)" << endl;
+        cin >> ruch;
+        if (ruch == "quit") {
+                *quit = true;
+                return;
+        }
+        else if (ruch == "cheat")
+                pokazKarty(GRA);
+        else if (ruch == "play") {
+                dokladanieNaStos(GRA, y);
+                sprawdzanie(GRA, y, GRA->srodek.front());
+        }
+        else if (ruch == "take")
+                dobieranieKart(GRA, 1, y);
+        else if (ruch == "makao")
+                makao(GRA, y);
+        else {
+                cout << "Niepoprawna komenda, wpisz jeszcze raz" << endl;
+                menuWyboru(GRA, quit, y);
+        }
+        if (GRA->gracze[y].size() == 1) {
+                string komenda;
+                cout << "Masz szanse wpisac jeszcze komende..." << endl;
+                cin >> komenda;
+                if (komenda != "makao") {
+                        cout << "Zapomniales wpisac 'makao', dobierasz 5 kart" << endl << endl;
+                        dobieranieKart(GRA, 5, y);
+                }
+        }
+}
+
+void ruchUzytkownikaDomyslny(gra* GRA, bool* quit, int y) {
+        karta tmp = GRA->srodek.front();
+        list<karta>::iterator it;
+        int licznik = 0;
+        bool mozna = false;
+        for (it = GRA->gracze[y].begin(); it != GRA->gracze[y].end(); ++it) {
+                if (it->liczba == tmp.liczba || it->kolor == tmp.kolor) {
+                        mozna = true;
+                        cout << "Mozesz wylozyc karte " << licznik + 1 << endl;
+                }
+                licznik++;
+        }
+        if (!mozna) {
+                cout << "Nie masz zadnej karty, ktora mozesz wylozyc-dobierasz karte" << endl;
+                dobieranieKart(GRA, 1, y);
+                sprawdzaczKart(GRA, y, GRA->srodek.front());
+                return;
+        }
+        menuWyboru(GRA, quit, y);
+}
+
+void ruchUzytkownika(gra* GRA, bool* quit) {
+        for (int y = 0; y < GRA->liczbaUzytkownikow; y++) {
+                if (!GRA->czyGraczWygral[y]) {
+                        if (GRA->karnaLiczbaKolejek[y] == 0) {
+                                wypiszKarty(GRA, y);
+
+                                karta sprawdzana = GRA->srodek.front();
+                                if (sprawdzana.liczba == 12) {
+                                        cout << "Czego zadasz?" << endl;
+                                        int coZadasz;
+                                        cin >> coZadasz;
+                                        if (coZadasz <= 4 || coZadasz >= 11) {
+                                                cout << "Bledne zadanie, wpisz jeszcze raz" << endl;
+                                                cin >> coZadasz;
+                                        }
+                                        else {
+                                                karta tmp;
+                                                tmp.liczba = coZadasz;
+                                                tmp.kolor = 0;
+                                                poszukiwaczKart(GRA, y, tmp);
+                                        }
+                                }
+                                else if (GRA->grozbaLiczbaKart != 0 || GRA->grozbaLiczbaKolejek != 0) {
+                                        if (sprawdzana.liczba == 0 || sprawdzana.liczba == 1 || sprawdzana.liczba == 2) {
+                                                poszukiwaczKart(GRA, y, sprawdzana);
+                                        }
+                                }
+                                else
+                                        ruchUzytkownikaDomyslny(GRA, quit, y);
+                        }
+                        else if (GRA->karnaLiczbaKolejek[y] > 0)
+                                GRA->karnaLiczbaKolejek[y]--;
+
+                }
+                if (GRA->gracze[y].size() == 0) {
+                        GRA->czyGraczWygral[y] = 1;
+                        cout << "Gracz nr " << y + 1 << " pozbyl sie wszystkich kart!" << endl << endl;
+                }
+        }
+}
+
+void ruchKomputeraDomyslny(gra* GRA, int x) {
+        karta tmp = GRA->srodek.front();
+        karta zagranie;
+        list<karta>::iterator itr;
+        bool mozna = false;
+        for (itr = GRA->gracze[x].begin(); itr != GRA->gracze[x].end(); ++itr) {
+                if (itr->liczba == tmp.liczba || itr->kolor == tmp.kolor) {
+                        mozna = true;
+                        zagranie = *itr;
+                        przeniesKarte(jakaLista(GRA, x), &GRA->srodek, zagranie);
+                        karta tmp = GRA->srodek.front();
+                        cout << "Komputer nr " << x + 1 << " wylozyl karte: " << tmp.liczba + 2 << " " << tmp.kolor << " " << endl << endl;
+                        break;
+                }
+        }
+        if (!mozna) {
+                dobieranieKart(GRA, 1, x);
+                cout << "Komputer nr " << x + 1 << " dobral karte" << endl << endl;
+        }
+}
+
+void ruchKomputera(gra* GRA) {
+        cout << "Teraz ruchy wykonuje komputer" << endl << endl;;
+        for (int x = GRA->liczbaUzytkownikow; x < GRA->liczbaGraczy; x++) {
+                if (!GRA->czyGraczWygral[x]) {
+                        if (GRA->karnaLiczbaKolejek[x] == 0) {
+                                karta sprawdzana = GRA->srodek.front();
+                                if (GRA->grozbaLiczbaKart != 0 || GRA->grozbaLiczbaKolejek != 0) {
+                                        if (sprawdzana.liczba == 0 || sprawdzana.liczba == 1 || sprawdzana.liczba == 2) {
+                                                if (GRA->grozbaLiczbaKart != 0 || GRA->grozbaLiczbaKolejek != 0)
+                                                        poszukiwaczKartKomp(GRA, x, sprawdzana);
+                                        }
+                                        else if (sprawdzana.liczba == 12) {
+                                                zadanieKart(GRA, x, 5);
+                                        }
+                                }
+                                else
+                                        ruchKomputeraDomyslny(GRA, x);
+                        }
+                        else if (GRA->karnaLiczbaKolejek[x] > 0)
+                                GRA->karnaLiczbaKolejek[x]--;
+                }
+                if (GRA->gracze[x].size() == 0) {
+                        GRA->czyGraczWygral[x] = 1;
+                        cout << "Komputer nr " << x + 1 << " pozbyl sie wszystkich kart!" << endl << endl;
+                }
+                if (GRA->gracze[x].size() == 1) {
+                        cout << "Komputer nr " << x + 1 << " ma makao!" << endl << endl;
+                }
+        }
+}
+
+void sprawdzanieWygraniaGry(gra* gierka, bool* quit) {
+        int tmp = 0;
+        for (int i = 0; i < gierka->liczbaGraczy; i++) {
+                if (gierka->czyGraczWygral[i] == 1)
+                        tmp++;
+        }
+        if (tmp == gierka->liczbaGraczy - 1)
+                *quit = true;
+
+}
+
+void rozgrywka(gra* gierka) {
+        srand(time(nullptr));
+        tasujKarty(gierka, 52);
+        wczytajLiczbeGraczy(gierka);
+        wczytajLiczbeUzytkownikow(gierka);
+        rozdajKarty(gierka, 5);
+        rozdajSrodek(gierka, 1);
+        bool quit = false;
+        while (!quit) {
+                ruchUzytkownika(gierka, &quit);
+                ruchKomputera(gierka);
+                sprawdzanieWygraniaGry(gierka, &quit);
+        }
+        wyswietlZakryte(gierka);
+}
+
+int main() {
+        gra GRA;
+        rozgrywka(&GRA);
+}
